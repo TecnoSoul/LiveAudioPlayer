@@ -7,7 +7,6 @@ const routes = [
       { path: 'station/:id', component: () => import('pages/StationDetail.vue') },
       { path: 'nosotros', component: () => import('pages/NosotrosPage.vue') },
       { path: 'contacto', component: () => import('pages/ContactoPage.vue') },
-      { path: 'tunoticia', component: () => import('pages/PageEjemplo.vue') }
 
     ],
   },
