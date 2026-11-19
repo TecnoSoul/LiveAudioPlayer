@@ -1,14 +1,14 @@
 {
   "name": "ar.com.tecnosoul.audioplayer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Multi live audio streams player app",
   "author": "matias-tecnosoul <matias@tecnosoul.com.ar>",
   "private": true,
   "dependencies": {
-    "@capacitor/android": "^6.1.2",
-    "@capacitor/app": "^6.0.0",
-    "@capacitor/cli": "^6.0.0",
-    "@capacitor/core": "^6.0.0",
-    "@mediagrid/capacitor-native-audio": "^1.1.0"
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/app": "^7.0.0",
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@mediagrid/capacitor-native-audio": "^2.2.0"
   }
 }

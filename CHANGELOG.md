@@ -1,12 +1,8 @@
 # Changelog
 
-## 1.0.0 — 2026-11-19
+## 1.0.1 — 2026-11-19
 
-First stable release.
-
-### Added
-- Multi-station live audio player with station detail pages and persistent mini player.
-- Native Android playback with notification and background audio; HTML5 fallback in browsers.
+Cleanup and fixes on top of 1.0.0.
 
 ### Fixed
 - Switching stations no longer leaves the player stuck in loading, and stale browser audio events no longer set errors on the new station.
@@ -20,4 +16,13 @@ First stable release.
 
 ### Changed
 - `public/` is no longer gitignored so static assets can be tracked.
-- Versions aligned to 1.0.0 across `package.json`, lockfile and `src-capacitor`.
+- `src-capacitor` aligned with the root project: Capacitor 7 and native-audio 2.x.
+- README rewritten.
+
+## 1.0.0 — 2026-11-19
+
+First stable release.
+
+### Added
+- Multi-station live audio player with station detail pages and persistent mini player.
+- Native Android playback with notification and background audio; HTML5 fallback in browsers.

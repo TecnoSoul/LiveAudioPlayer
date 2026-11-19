@@ -2,7 +2,7 @@
 
 Multi live-audio-stream player app (`ar.com.tecnosoul.audioplayer`), built with Quasar (Vue 3 + Vite), Pinia and Capacitor. Runs as a web app (SPA) and as an Android app with native background playback.
 
-**Current release: 1.0.0** — see [CHANGELOG.md](CHANGELOG.md).
+**Current release: 1.0.1** — see [CHANGELOG.md](CHANGELOG.md).
 
 ## Features
 
