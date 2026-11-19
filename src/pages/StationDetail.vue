@@ -157,7 +157,7 @@ export default defineComponent({
 }
 
 .station-image {
-  ::deep(.q-img__content) {
+  :deep(.q-img__content) {
     display: flex;
     justify-content: center;
     align-items: center;

@@ -4,10 +4,12 @@ import { Capacitor } from "@capacitor/core";
 
 // Only import AudioPlayer on native platforms
 let AudioPlayer = null;
-if (Capacitor.isNativePlatform()) {
-  import("@mediagrid/capacitor-native-audio").then((module) => {
+async function loadNativePlayer() {
+  if (!AudioPlayer) {
+    const module = await import("@mediagrid/capacitor-native-audio");
     AudioPlayer = module.AudioPlayer;
-  });
+  }
+  return AudioPlayer;
 }
 
 export const useRadioStore = defineStore("radio", {
@@ -29,10 +31,7 @@ export const useRadioStore = defineStore("radio", {
         streamUrl: "https://radios2.tecnosoul.com.ar:8001/bigbang",
         image: "/images/la-512.png",
         location: "Bs. As.",
-        social: {
-          instagram: "https://www.instagram.com/test/",
-          whatsapp: "https://wa.me/54333/",
-        },
+        social: {},
       },
       {
         id: 2,
@@ -41,9 +40,7 @@ export const useRadioStore = defineStore("radio", {
         streamUrl: "https://radios2.tecnosoul.com.ar:8001/guayraradio",
         image: "/images/512.png",
         location: "Misiones",
-        social: {
-          instagram: "https://www.instagram.com/aaa",
-        },
+        social: {},
       },
       {
         id: 3,
@@ -52,9 +49,7 @@ export const useRadioStore = defineStore("radio", {
         streamUrl: "https://radios2.tecnosoul.com.ar:8001/txlradio",
         image: "/images/512.png",
         location: "Argentina",
-        social: {
-          instagram: "https://www.instagram.com/.../",
-        },
+        social: {},
       },
       {
         id: 4,
@@ -62,46 +57,6 @@ export const useRadioStore = defineStore("radio", {
         genre: "Electrónica",
         streamUrl: "https://radios.tecnosoul.com.ar:8001/elektrona",
         image: "/images/nova-512.png",
-        location: "Argentina",
-        social: {
-          instagram: "https://www.instagram.com/.../",
-        },
-      },
-      {
-        id: 5,
-        name: "Radio 5",
-        genre: "Variado",
-        streamUrl: "https://server....",
-        image: "/images/-512.png",
-        location: "Argentina",
-        social: {
-          instagram: "https://www.instagram.com/.../",
-        },
-      },
-      {
-        id: 6,
-        name: "Radio 6",
-        genre: "Variado",
-        streamUrl: "https://server....",
-        image: "/images/512.png",
-        location: "Argentina",
-        social: {},
-      },
-      {
-        id: 7,
-        name: "Radio 7",
-        genre: "Variado",
-        streamUrl: "https://server....",
-        image: "/images/one-512.png",
-        location: "Neuquen",
-        social: {},
-      },
-      {
-        id: 8,
-        name: "Radio 8",
-        genre: "Variado",
-        streamUrl: "https://server....",
-        image: "/images/512.png",
         location: "Argentina",
         social: {},
       },
@@ -115,7 +70,6 @@ export const useRadioStore = defineStore("radio", {
         return; // Same station, do nothing
       }
 
-      console.log("Setting current station to:", station.name);
       this.currentStation = station;
       this.error = null;
 
@@ -125,39 +79,32 @@ export const useRadioStore = defineStore("radio", {
 
     async initializeAudioPlayer() {
       if (!this.currentStation || !this.currentStation.streamUrl) {
-        console.warn("No current station or stream URL available");
         this.error = "No hay estación seleccionada";
         return;
       }
 
+      // Reset state for the new station
       this.isLoading = true;
+      this.isReady = false;
+      this.isPlaying = false;
       this.error = null;
 
-      // Browser fallback
       if (!this.isNative) {
-        console.log("Browser mode: Using HTML5 Audio");
-        await this.initializeBrowserAudio();
+        this.initializeBrowserAudio();
         return;
       }
 
-      // Native mode
       try {
-        // Destroy previous audio instance if any
-        if (this.isReady) {
-          console.log("Destroying previous audio player instance");
-          try {
-            await AudioPlayer.destroy({ audioId: this.audioId });
-          } catch (err) {
-            console.warn("Error destroying previous instance:", err);
-          }
-          this.isReady = false;
-          this.isPlaying = false;
+        const player = await loadNativePlayer();
+
+        // Release the previous instance (and its listeners) before creating a new one
+        try {
+          await player.destroy({ audioId: this.audioId });
+        } catch (err) {
+          // Nothing to destroy on first use
         }
 
-        console.log("Creating native audio player for:", this.currentStation.streamUrl);
-
-        // Create the audio player
-        await AudioPlayer.create({
+        await player.create({
           audioId: this.audioId,
           audioSource: this.currentStation.streamUrl,
           friendlyTitle: this.currentStation.name,
@@ -167,38 +114,20 @@ export const useRadioStore = defineStore("radio", {
           loop: false,
         });
 
-        console.log("Initializing native audio player");
+        await player.initialize({ audioId: this.audioId });
 
-        // Initialize the audio player
-        await AudioPlayer.initialize({
-          audioId: this.audioId,
+        await player.onPlaybackStatusChange({ audioId: this.audioId }, (result) => {
+          this.isPlaying = result.status === "playing";
+          if (result.status === "error") {
+            this.error = "Error al reproducir la estación";
+            this.isPlaying = false;
+          }
         });
 
-        // Set up event listeners
-        console.log("Setting up playback status listener");
-        await AudioPlayer.onPlaybackStatusChange(
-          { audioId: this.audioId },
-          (result) => {
-            console.log("Playback status changed:", result.status);
-            this.isPlaying = result.status === "playing";
-
-            if (result.status === "error") {
-              this.error = "Error al reproducir la estación";
-              this.isPlaying = false;
-            }
-          }
-        );
-
-        // Set up audio ready listener
-        await AudioPlayer.onAudioReady({ audioId: this.audioId }, () => {
-          console.log("Audio is ready");
+        await player.onAudioReady({ audioId: this.audioId }, () => {
           this.isReady = true;
           this.isLoading = false;
         });
-
-        this.isReady = true;
-        this.isLoading = false;
-        console.log("Native audio player initialized successfully");
       } catch (error) {
         console.error("Error initializing native audio player:", error);
         this.error = "No se pudo inicializar el reproductor";
@@ -208,99 +137,74 @@ export const useRadioStore = defineStore("radio", {
       }
     },
 
-    async initializeBrowserAudio() {
-      try {
-        // Clean up previous audio if exists
-        if (this.browserAudio) {
-          this.browserAudio.pause();
-          this.browserAudio.src = "";
-          this.browserAudio = null;
-        }
+    releaseBrowserAudio() {
+      const audio = this.browserAudio;
+      if (!audio) return;
+      this.browserAudio = null; // listeners below ignore events from stale elements
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+    },
 
-        // Create HTML5 Audio element
-        this.browserAudio = new Audio(this.currentStation.streamUrl);
-        this.browserAudio.preload = "none";
+    initializeBrowserAudio() {
+      this.releaseBrowserAudio();
 
-        // Set up event listeners
-        this.browserAudio.addEventListener("playing", () => {
-          console.log("Browser audio playing");
-          this.isPlaying = true;
-          this.isLoading = false;
-        });
+      const audio = new Audio(this.currentStation.streamUrl);
+      audio.preload = "none";
+      this.browserAudio = audio;
+      const isCurrent = () => this.browserAudio === audio;
 
-        this.browserAudio.addEventListener("pause", () => {
-          console.log("Browser audio paused");
-          this.isPlaying = false;
-        });
-
-        this.browserAudio.addEventListener("error", (e) => {
-          console.error("Browser audio error:", e);
-          this.error = "Error al reproducir en el navegador";
-          this.isPlaying = false;
-          this.isLoading = false;
-        });
-
-        this.browserAudio.addEventListener("canplay", () => {
-          console.log("Browser audio ready");
-          this.isReady = true;
-          this.isLoading = false;
-        });
-
-        this.isReady = true;
+      audio.addEventListener("playing", () => {
+        if (!isCurrent()) return;
+        this.isPlaying = true;
         this.isLoading = false;
-        console.log("Browser audio initialized");
-      } catch (error) {
-        console.error("Error initializing browser audio:", error);
-        this.error = "No se pudo inicializar el reproductor";
+      });
+      audio.addEventListener("pause", () => {
+        if (isCurrent()) this.isPlaying = false;
+      });
+      audio.addEventListener("error", () => {
+        if (!isCurrent()) return;
+        this.error = "Error al reproducir en el navegador";
+        this.isPlaying = false;
         this.isLoading = false;
-      }
+      });
+
+      // preload = "none": the element is usable immediately; it loads on play()
+      this.isReady = true;
+      this.isLoading = false;
     },
 
     async play() {
-      if (!this.currentStation) {
-        console.warn("No station selected");
-        return;
-      }
+      if (!this.currentStation) return;
 
-      if (!this.isReady) {
-        console.log("Audio not ready, initializing first");
+      if (!this.isReady && !this.isLoading) {
         await this.initializeAudioPlayer();
       }
 
       try {
-        console.log("Starting playback");
-
-        if (this.isNative && AudioPlayer) {
+        if (this.isNative) {
+          if (!AudioPlayer || !this.isReady) return; // onAudioReady / events drive the state
           await AudioPlayer.play({ audioId: this.audioId });
         } else if (this.browserAudio) {
+          this.isLoading = true;
           await this.browserAudio.play();
         }
-
-        this.isPlaying = true;
         this.error = null;
       } catch (error) {
         console.error("Error starting playback:", error);
         this.error = "Error al reproducir";
         this.isPlaying = false;
+        this.isLoading = false;
       }
     },
 
     async pause() {
-      if (!this.isReady) {
-        console.warn("Cannot pause: audio player not ready");
-        return;
-      }
-
       try {
-        console.log("Pausing playback");
-
-        if (this.isNative && AudioPlayer) {
-          await AudioPlayer.pause({ audioId: this.audioId });
+        if (this.isNative) {
+          if (AudioPlayer && this.isReady) await AudioPlayer.pause({ audioId: this.audioId });
         } else if (this.browserAudio) {
           this.browserAudio.pause();
         }
-
-        this.isPlaying = false;
       } catch (error) {
         console.error("Error pausing playback:", error);
         this.error = "Error al pausar";
@@ -316,20 +220,13 @@ export const useRadioStore = defineStore("radio", {
     },
 
     async stop() {
-      if (!this.isReady) {
-        return;
-      }
-
       try {
-        console.log("Stopping playback");
-
-        if (this.isNative && AudioPlayer) {
-          await AudioPlayer.stop({ audioId: this.audioId });
+        if (this.isNative) {
+          if (AudioPlayer && this.isReady) await AudioPlayer.stop({ audioId: this.audioId });
         } else if (this.browserAudio) {
           this.browserAudio.pause();
           this.browserAudio.currentTime = 0;
         }
-
         this.isPlaying = false;
       } catch (error) {
         console.error("Error stopping playback:", error);
